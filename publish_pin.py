@@ -25,6 +25,9 @@ API_BASE = "https://api.pinterest.com/v5"
 
 def check_environment():
     """Verify that all required environment variables are configured."""
+    if os.environ.get("PINTEREST_ACCESS_TOKEN", "").strip():
+        return  # Direct token from developer portal is available
+
     required = {
         "PINTEREST_CLIENT_ID": os.environ.get("PINTEREST_CLIENT_ID"),
         "PINTEREST_CLIENT_SECRET": os.environ.get("PINTEREST_CLIENT_SECRET"),
@@ -33,8 +36,16 @@ def check_environment():
     missing = [name for name, val in required.items() if not val or not val.strip()]
     if missing:
         print(f"Error: Missing required environment secrets: {', '.join(missing)}", file=sys.stderr)
-        print("Please configure these in your GitHub repository: Settings -> Secrets and variables -> Actions.", file=sys.stderr)
+        print("Please configure PINTEREST_ACCESS_TOKEN or PINTEREST_CLIENT_ID/SECRET/REFRESH_TOKEN in GitHub repository secrets.", file=sys.stderr)
         sys.exit(1)
+
+
+def get_active_access_token():
+    """Return direct access token if provided, otherwise refresh one dynamically."""
+    direct = os.environ.get("PINTEREST_ACCESS_TOKEN", "").strip()
+    if direct:
+        return direct
+    return get_fresh_access_token()
 
 
 def get_fresh_access_token():
@@ -219,8 +230,8 @@ def main():
     # Check environment secrets
     check_environment()
 
-    print("Refreshing Pinterest access token...")
-    access_token = get_fresh_access_token()
+    print("Retrieving Pinterest access token...")
+    access_token = get_active_access_token()
 
     print("Publishing to Pinterest API...")
     resp = publish_pin_to_pinterest(access_token, payload)
