@@ -39,6 +39,7 @@ def fetch_boards(access_token: str):
     print("\n" + "=" * 60)
     print("FETCHING YOUR PINTEREST BOARDS...")
     print("=" * 60)
+    boards = []
     try:
         resp = requests.get(
             f"{API_BASE}/boards",
@@ -62,6 +63,7 @@ def fetch_boards(access_token: str):
             print("You can run 'python list_boards.py' later once your app has permissions.")
     except Exception as e:
         print(f"Notice: Could not fetch boards: {e}")
+    return boards
 
 
 def main():
@@ -157,7 +159,30 @@ def main():
 
     # Fetch boards automatically so user has their 19-digit board ID right away
     if access_token:
-        fetch_boards(access_token)
+        boards = fetch_boards(access_token)
+        if boards and os.path.exists("pins.csv"):
+            print("\n" + "=" * 60)
+            target_bid = input("Paste your 19-digit Board ID to auto-fill all pins in pins.csv (or press Enter to skip): ").strip()
+            if target_bid.isdigit():
+                import csv
+                with open("pins.csv", newline="", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    fieldnames = list(reader.fieldnames)
+                    rows = list(reader)
+                updated = 0
+                for r in rows:
+                    if r.get("status") == "pending":
+                        r["board_id"] = target_bid
+                        updated += 1
+                with open("pins.csv", "w", newline="", encoding="utf-8") as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(rows)
+                print(f"\n[SUCCESS] Automatically updated {updated} pending pins with Board ID {target_bid} in pins.csv!")
+                print("Commit & push pins.csv:")
+                print("  git add pins.csv")
+                print("  git commit -m 'Set Pinterest Board ID'")
+                print("  git push origin main")
 
 
 if __name__ == "__main__":
